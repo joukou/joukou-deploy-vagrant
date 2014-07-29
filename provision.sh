@@ -7,6 +7,8 @@
 # Copyright (c) 2009-2014 Joukou Ltd. All rights reserved.
 #
 
+export DEBIAN_FRONTEND=noninteractive
+
 DOCKER_USERNAME=joukoudeploy
 DOCKER_EMAIL=platform@joukou.com
 DOCKER_PASSWORD=talnovjilcukedhx
@@ -149,6 +151,8 @@ docker run -d \
 
 docker pull joukou/nginx:$DOCKER_TAG
 docker run -d \
+  -v /etc/ssl/certs/wildcard.joukou.com.crt:/etc/ssl/certs/wildcard.joukou.com.crt \
+  -v /etc/ssl/private/wildcard.joukou.com.key:/etc/ssl/private/wildcard.joukou.com.key \
   -p 80:80 \
   -p 443:443 \
   --name nginx \
