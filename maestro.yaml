@@ -1,0 +1,78 @@
+registries:
+  dockerhub:
+    registry: https://index.docker.io/v1/
+    username: joukoudeploy
+    password: talnovjilcukedhx
+    email: platform@joukou.com
+ships:
+  localhost:
+    ip: 127.0.0.1
+    docker_port: 2375
+services:
+  elasticsearch:
+    image: joukou/elasticsearch
+    instances:
+      es-1:
+        ship: localhost
+        ports:
+          http: 9200
+          peer: 9300
+          discovery: 54328
+        privileged: false
+        volumes:
+          /var/lib/elasticsearch: /var/lib/elasticsearch
+          /var/log/elasticsearch: /var/log/elasticsearch
+        limits:
+          memory: 1g
+          cpu: 2
+  nginx:
+    image: joukou/nginx
+    instances:
+      nginx-1:
+        ship: localhost
+        ports:
+          http: 80
+          https: 443
+        privileged: false
+  rabbitmq:
+    image: joukou/rabbitmq
+    instances:
+      mq-1:
+        ship: localhost
+        ports:
+          epmd: 4369
+          amqp: 5672
+          management: 15672
+          dist: 25672
+        volumes:
+          /var/lib/rabbitmq: /var/lib/rabbitmq
+          /var/log/rabbitmq: /var/log/rabbitmq
+  riak:
+    image: joukou/riak
+    instances:
+      riak-1:
+        ship: localhost
+        ports:
+          epmd: 4369
+          protobuf: 8087
+          dist1: 8088
+          dist2: 8089
+          dist3: 8090
+          dist4: 8091
+          dist5: 8092
+          solr: 8093
+          http: 8098
+          handoff: 8099
+          solr-jmx: 8985
+        volumes:
+          /var/lib/riak: /var/lib/riak
+          /var/log/riak: /var/log/riak
+  skydns:
+    image: crosbymichael/skydns
+    instances:
+      skydns-1:
+        ship: localhost
+        ports:
+          
+
+
