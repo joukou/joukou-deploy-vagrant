@@ -34,7 +34,7 @@ apt-get dist-upgrade -y --no-install-recommends
 apt-get install -y --no-install-recommends curl etckeeper git-core htop lxc-docker tmux vim
 
 # Use git for etckeeper
-sed -e 's:^\(VCS\s*=.*bzr\):#\1:' -e 's:^#\(VCS\s*=.*git\):\1:' -i /etc/etckeeper/etckeeper.conf
+sed -e 's:^\(VCS\s*=.*bzr\):#\1:' -e 's:^#\(VCS\s*=.*git\):\1:' -e 's:^GIT_COMMIT_OPTIONS="":GIT_COMMIT_OPTIONS="-q":' -i /etc/etckeeper/etckeeper.conf
 
 # Initialize etckeeper repository
 cd /etc && etckeeper init && etckeeper commit "Initial commit"
@@ -52,17 +52,16 @@ cd -
 # Configure Docker DNS for SkyDock
 DOCKER_BIP=$(ip -o -4 addr list docker0 | awk '{print $4}')
 DOCKER_DNS=$(ip -o -4 addr list docker0 | awk '{print $4}' | cut -d/ -f1)
-sed -i 's/^#DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4"$/DOCKER_OPTS="--bip=$DOCKER_BIP --dns=$DOCKER_DNS"/'
+sed -e "s:^#DOCKER_OPTS\s*=\s*\"--dns 8.8.8.8 --dns 8.8.4.4\":DOCKER_OPTS=\"--bip=$DOCKER_BIP --dns=$DOCKER_DNS\":" -i /etc/default/docker
 
 service docker restart
 
-cd /etc && etckeeper commit "Configures Docker for DNS for SkyDock"
+cd /etc && etckeeper commit "Configures Docker DNS for SkyDock"
 cd -
 
 # Add users and groups
 groupadd admin
-
-# TODO visudo, users etc
+sed -e "s:^%admin ALL=(ALL) ALL:%admin ALL=(ALL) NOPASSWD\: ALL:" -i /etc/sudoers
 
 cd /etc && etckeeper commit "Adds users and groups"
 cd -
@@ -99,6 +98,7 @@ ufw allow 443
 #   ufw allow proto tcp from $OTHER_HOST_IP to any port 8098
 #   # Allow intra-cluster Basho Riak / RabbitMQ epmd listener
 #   ufw allow proto tcp from $OTHER_HOST_IP to any port 4369
+#   ufw allow proto tcp from $OTHER_HOST_IP to any port 4370
 #   # Allow intra-cluster Basho Riak handoff
 #   ufw allow proto tcp from $OTHER_HOST_IP to any port 8099
 #   # Allow intra-cluster RabbitMQ
@@ -127,22 +127,22 @@ docker login \
   --username=$DOCKER_USERNAME \
   --password=$DOCKER_PASSWORD
 
-docker pull crosbymichael/skydns
+docker pull crosbymichael/skydns:latest
 docker run -d \
   -p $DOCKER_DNS:53:53/udp \
   --name skydns \
-  crosbymichael/skydns -nameserver 8.8.8.8:53 -domain joukou.com
+  crosbymichael/skydns:latest -nameserver 8.8.8.8:53 -domain joukou.com
 
-docker pull crosbymichael/skydock
+docker pull crosbymichael/skydock:latest
 docker run -d \
   -v /var/run/docker.sock:/docker.sock \
   --name skydock \
-  crosbymichael/skydock -ttl 30 -environment dev -s /docker.sock -domain joukou.com -name skydns
+  crosbymichael/skydock:latest -ttl 30 -environment dev -s /docker.sock -domain joukou.com -name skydns
 
 docker pull joukou/elasticsearch:$DOCKER_TAG
 docker run -d \
   -v /var/lib/elasticsearch:/var/lib/elasticsearch \
-  -v /var/log/elasticsearc:/var/log/elasticsearch \
+  -v /var/log/elasticsearch:/var/log/elasticsearch \
   -p 9200:9200 \
   -p 9300:9300 \
   -p 54328:54328 \
