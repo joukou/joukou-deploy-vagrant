@@ -9,12 +9,8 @@ if File.exists?('user-data') && ARGV[0].eql?('up')
   data = YAML.load(IO.readlines('user-data')[1..-1].join)
   data['coreos']['etcd']['discovery'] = token
 
-  lines = YAML.dump(data).split("\n")
-  lines[0] = '#cloud-config'
-
-  open('user-data', 'r+') do |f|
-    f.puts(lines.join("\n"))
-  end
+  yaml = YAML.dump(data)
+  File.open('user-data', 'w') { |file| file.write("#cloud-config\n\n#{yaml}") }
 end
 
 # Size of the CoreOS cluster created by Vagrant
