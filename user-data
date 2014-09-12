@@ -40,23 +40,6 @@ coreos:
         ExecStart=/usr/bin/timedatectl set-timezone Pacific/Auckland
         RemainAfterExit=yes
         Type=oneshot
-    - name: rudder-install.service
-      command: start
-      enable: true
-      content: |
-        [Unit]
-        Description=Rudder overlay network installation
-        Documentation=https://github.com/coreos/rudder
-        Requires=network-online.target
-        After=network-online.target
-
-        [Service]
-        ExecStart=/bin/bash -c 'if [[ ! -a /opt/bin/rudder ]]; then docker run -v /opt/bin:/target -i -t google/golang /bin/bash -c "git clone https://github.com/coreos/rudder.git && cd rudder && ./build && cp bin/rudder /target/"; fi'
-        RemainAfterExit=yes
-        Type=oneshot
-
-        [Install]
-        WantedBy=multi-user.target
 write_files:
   - path: /home/core/.dockercfg
     owner: core:core
