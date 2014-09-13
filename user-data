@@ -61,12 +61,6 @@ write_files:
           "email": ""
         }
       }
-  - path: /etc/hosts
-    owner: root:root
-    permissions: 0644
-    content: |
-      127.0.0.1       localhost localhost.localdomain
-      ::1             localhost localhost.localdomain
   # Basho Riak minimally sufficient network settings to improve many aspects of
   # Riak usage on Linux.
   # See: http://docs.basho.com/riak/2.0.0/ops/tuning/linux/#Kernel-and-Network-Tuning
