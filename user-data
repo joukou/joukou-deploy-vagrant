@@ -85,23 +85,8 @@ write_files:
   # indices. The default limits on mmap counts is too low, which may result in
   # out of memory exceptions.
   # See: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#vm-max-map-count
-  #
-  # vm.dirty_background_bytes
-  # Contains the amount of dirty memory at which the background kernel flusher
-  # threads will start writeback.
-  #
-  # vm.dirty_bytes
-  # Contains the amount of dirty memory at which a process generating disk
-  # writes will itself start writeback.
-  #
-  # Basho Riak and ElasticSearch makes heavy use of disk I/O for storage
-  # operations. The following dirty memory settings help prevent disks from
-  # being overwhelmed during periods of high write activity at the expense of
-  # peak performance for spiky workloads.
   - path: /etc/sysctl.d/10-vm.conf
     owner: root:root
     permissions: 0644
     content: |
       vm.max_map_count = 262144
-      vm.dirty_bytes = 209715200
-      vm.dirty_background_bytes = 104857600
