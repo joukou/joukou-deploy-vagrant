@@ -5,7 +5,7 @@ coreos:
     addr: $public_ipv4:4001
     peer-addr: $public_ipv4:7001
   fleet:
-    public-ip: $public_ipv4
+    public-ip: $public_ipv4:4001
     metadata: provider=vagrant
   units:
     # https://github.com/coreos/coreos-cloudinit/issues/156
