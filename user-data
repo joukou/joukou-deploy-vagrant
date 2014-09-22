@@ -5,7 +5,7 @@ coreos:
   etcd:
     addr: $public_ipv4:4001
     peer-addr: $public_ipv4:7001
-    discovery: https://discovery.etcd.io/6fa83854f2022ae5b6fcbb5ca3390077
+    discovery: https://discovery.etcd.io/61232c31fcdd5f93cbed0c37035dd00b
   fleet:
     public-ip: $public_ipv4:4001
     metadata: provider=vagrant
@@ -52,6 +52,24 @@ coreos:
 
       [Install]
       WantedBy=multi-user.target
+  - name: docker-env.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Docker Application Container Engine Environment
+      Documentation=http://docs.docker.io
+      Requires=flannel.service
+      After=flannel.service
+
+      [Service]
+      EnvironmentFile=/run/flannel/subnet.env
+      ExecStart=/opt/bin/docker-env
+      Type=oneshot
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
   - name: docker.service
     command: start
     enable: true
@@ -60,18 +78,19 @@ coreos:
       Description=Docker Application Container Engine
       Documentation=http://docs.docker.io
       Requires=docker.socket
-      Requires=flannel.service
-      After=flannel.service
+      Requires=docker-env.service
+      After=docker-env.service
 
       [Service]
       Environment="TMPDIR=/var/tmp/"
       EnvironmentFile=/run/flannel/subnet.env
+      EnvironmentFile=/run/docker.env
       ExecStartPre=/bin/mount --make-rprivate /
       LimitNOFILE=1048576
       LimitNPROC=1048576
       # Run docker but don't have docker automatically restart
       # containers. This is a job for systemd and unit files.
-      ExecStart=/usr/bin/docker --daemon --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} --storage-driver=btrfs --host=fd://
+      ExecStart=/usr/bin/docker --daemon --bip=${FLANNEL_SUBNET} --dns=${DOCKER_BRIDGE_IPV4} --mtu=${FLANNEL_MTU} --storage-driver=btrfs --host=fd://
 
       [Install]
       WantedBy=multi-user.target
@@ -196,3 +215,9 @@ write_files:
     else
       echo 'flannel is already installed.'
     fi
+- path: /opt/bin/docker-env
+  owner: root:root
+  permissions: '0555'
+  content: |
+    #!/bin/bash
+    printf "DOCKER_BRIDGE_IPV4=$(printf ${FLANNEL_SUBNET} | awk -F '/' '{ print $1}')\n" > /run/docker.env
