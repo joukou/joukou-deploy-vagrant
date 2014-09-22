@@ -1,92 +1,128 @@
 #cloud-config
 
+---
 coreos:
   etcd:
     addr: $public_ipv4:4001
     peer-addr: $public_ipv4:7001
+    discovery: https://discovery.etcd.io/07f93c8d8c507f8b844126c38e25bcde
   fleet:
     public-ip: $public_ipv4:4001
     metadata: provider=vagrant
   units:
-    # https://github.com/coreos/coreos-cloudinit/issues/156
-    - name: systemd-sysctl.service
-      command: restart
-    - name: etcd.service
-      command: start
-    - name: fleet.service
-      command: start
-    - name: docker-tcp.socket
-      command: start
-      enable: true
-      content: |
-        [Unit]
-        Description=Docker Socket for the API
+  - name: systemd-sysctl.service
+    command: restart
+  - name: etcd.service
+    command: start
+  - name: flannel-install.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Install Flannel
+      Requires=network-online.target
+      After=network-online.target
 
-        [Socket]
-        ListenStream=2375
-        Service=docker.service
-        BindIPv6Only=both
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStartPre=/opt/bin/wait-for-network
+      ExecStart=/opt/bin/install-flannel
+  - name: fleet.service
+    command: start
+  - name: docker.service
+    command: start
+  - name: docker-tcp.socket
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Docker Socket for the API
 
-        [Install]
-        WantedBy=sockets.target
-    - name: settimezone.service
-      command: start
-      enable: true
-      content: |
-        [Unit]
-        Description=Set the timezone
+      [Socket]
+      ListenStream=2375
+      Service=docker.service
+      BindIPv6Only=both
 
-        [Service]
-        ExecStart=/usr/bin/timedatectl set-timezone Pacific/Auckland
-        RemainAfterExit=yes
-        Type=oneshot
+      [Install]
+      WantedBy=sockets.target
+  - name: settimezone.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Set the timezone
+
+      [Service]
+      ExecStart=/usr/bin/timedatectl set-timezone Pacific/Auckland
+      RemainAfterExit=yes
+      Type=oneshot
 write_files:
-  - path: /home/core/.dockercfg
-    owner: core:core
-    permissions: 0644
-    content: |
-      {
-        "https://quay.io/v1/": {
-          "auth": "am91a291K2NvcmVvczoyR01GVVFaTzFLVFgyNDdQUkJMMDRVS05MNk1PRExSVDI2UTVPNjZNWUlXTjRWMUIwSjBCRFdPMkVKWFRYMllU",
-          "email": ""
-        }
+- path: /home/core/.dockercfg
+  owner: core:core
+  permissions: "0444"
+  content: |
+    {
+      "https://quay.io/v1/": {
+        "auth": "am91a291K2NvcmVvczoyR01GVVFaTzFLVFgyNDdQUkJMMDRVS05MNk1PRExSVDI2UTVPNjZNWUlXTjRWMUIwSjBCRFdPMkVKWFRYMllU",
+        "email": ""
       }
-  - path: /root/.dockercfg
-    owner: root:root
-    permissions: 0644
-    content: |
-      {
-        "https://quay.io/v1/": {
-          "auth": "am91a291K2NvcmVvczoyR01GVVFaTzFLVFgyNDdQUkJMMDRVS05MNk1PRExSVDI2UTVPNjZNWUlXTjRWMUIwSjBCRFdPMkVKWFRYMllU",
-          "email": ""
-        }
+    }
+- path: /root/.dockercfg
+  owner: root:root
+  permissions: "0444"
+  content: |
+    {
+      "https://quay.io/v1/": {
+        "auth": "am91a291K2NvcmVvczoyR01GVVFaTzFLVFgyNDdQUkJMMDRVS05MNk1PRExSVDI2UTVPNjZNWUlXTjRWMUIwSjBCRFdPMkVKWFRYMllU",
+        "email": ""
       }
-  # Basho Riak minimally sufficient network settings to improve many aspects of
-  # Riak usage on Linux.
-  # See: http://docs.basho.com/riak/2.0.0/ops/tuning/linux/#Kernel-and-Network-Tuning
-  - path: /etc/sysctl.d/10-net.conf
-    owner: root:root
-    permissions: 0644
-    content: |
-      net.ipv4.tcp_max_syn_backlog = 40000
-      net.core.somaxconn = 40000
-      net.ipv4.tcp_sack = 1
-      net.ipv4.tcp_window_scaling = 1
-      net.ipv4.tcp_fin_timeout = 15
-      net.ipv4.tcp_keepalive_intvl = 30
-      net.ipv4.tcp_tw_reuse = 1
-      net.ipv4.tcp_moderate_rcvbuf = 1
-  # vm.max_map_count
-  # The maximum number of memory map areas a process may have. Memory map areas
-  # are used as a side-effect of calling malloc, directly by mmap and mprotect,
-  # and also when loading shared libraries.
-  #
-  # ElasticSearch uses a hybrid mmapfs / niofs directory by default to store its
-  # indices. The default limits on mmap counts is too low, which may result in
-  # out of memory exceptions.
-  # See: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#vm-max-map-count
-  - path: /etc/sysctl.d/10-vm.conf
-    owner: root:root
-    permissions: 0644
-    content: |
-      vm.max_map_count = 262144
+    }
+- path: /etc/sysctl.d/10-net.conf
+  owner: root:root
+  permissions: "0644"
+  content: |
+    net.ipv4.tcp_max_syn_backlog = 40000
+    net.core.somaxconn = 40000
+    net.ipv4.tcp_sack = 1
+    net.ipv4.tcp_window_scaling = 1
+    net.ipv4.tcp_fin_timeout = 15
+    net.ipv4.tcp_keepalive_intvl = 30
+    net.ipv4.tcp_tw_reuse = 1
+    net.ipv4.tcp_moderate_rcvbuf = 1
+- path: /etc/sysctl.d/10-vm.conf
+  owner: root:root
+  permissions: "0644"
+  content: |
+    vm.max_map_count = 262144
+- path: /opt/bin/wait-for-network
+  owner: root:root
+  permissions: "0555"
+  content: |
+    #!/bin/bash
+    while true
+    do
+      ping -c 1 google.com
+      if [[ $? == 0 ]];
+      then
+        echo 'network is available.'
+        break;
+      else
+        echo 'network is not available. waiting...'
+        sleep 2
+      fi
+    done
+- path: /opt/bin/install-flannel
+  owner: root:root
+  permissions: "0555"
+  content: |
+    #!/bin/bash
+    if [[ ! -e /opt/bin/flanneld ]]
+    then
+      echo 'flannel is not installed. installing...'
+      cd /opt/bin
+      wget https://github.com/joukou/joukou-docker-flannel-build/releases/download/git%2B9c63c4e/flanneld
+      chmod +x flanneld
+    else
+      echo 'flannel is already installed.'
+    fi
