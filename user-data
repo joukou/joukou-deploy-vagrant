@@ -5,7 +5,7 @@ coreos:
   etcd:
     addr: $public_ipv4:4001
     peer-addr: $public_ipv4:7001
-    discovery: https://discovery.etcd.io/60a3774e498df6b4a834a5030302b63f
+    discovery: https://discovery.etcd.io/6fa83854f2022ae5b6fcbb5ca3390077
   fleet:
     public-ip: $public_ipv4:4001
     metadata: provider=vagrant
@@ -13,6 +13,8 @@ coreos:
   - name: systemd-sysctl.service
     command: restart
   - name: etcd.service
+    command: start
+  - name: fleet.service
     command: start
   - name: flannel-install.service
     command: start
@@ -46,13 +48,33 @@ coreos:
       ExecStartPre=-/usr/bin/etcdctl --no-sync mk /coreos.com/network/config '{"Network":"10.0.0.0/16"}'
       ExecStartPre=/usr/sbin/iptables -N FLANNEL
       ExecStart=/opt/bin/flanneld -ip-masq=true
+      ExecStartPost=/opt/bin/wait-for-file /run/flannel/subnet.env
 
       [Install]
       WantedBy=multi-user.target
-  - name: fleet.service
-    command: start
   - name: docker.service
     command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Docker Application Container Engine
+      Documentation=http://docs.docker.io
+      Requires=docker.socket
+      Requires=flannel.service
+      After=flannel.service
+
+      [Service]
+      Environment="TMPDIR=/var/tmp/"
+      EnvironmentFile=/run/flannel/subnet.env
+      ExecStartPre=/bin/mount --make-rprivate /
+      LimitNOFILE=1048576
+      LimitNPROC=1048576
+      # Run docker but don't have docker automatically restart
+      # containers. This is a job for systemd and unit files.
+      ExecStart=/usr/bin/docker --daemon --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} --storage-driver=btrfs --host=fd://
+
+      [Install]
+      WantedBy=multi-user.target
   - name: docker-tcp.socket
     command: start
     enable: true
@@ -78,6 +100,9 @@ coreos:
       ExecStart=/usr/bin/timedatectl set-timezone Pacific/Auckland
       RemainAfterExit=yes
       Type=oneshot
+
+      [Install]
+      WantedBy=multi-user.target
 write_files:
 - path: /home/core/.dockercfg
   owner: core:core
@@ -130,7 +155,7 @@ write_files:
         break;
       else
         echo 'network is not available. waiting...'
-        sleep 2
+        sleep 1
       fi
     done
 - path: /opt/bin/wait-for-etcd
@@ -141,6 +166,21 @@ write_files:
     until etcdctl --no-sync ls >/dev/null 2>&1; do
       echo "waiting for etcd..."
       sleep 5
+    done
+- path: /opt/bin/wait-for-file
+  owner: root:root
+  permissions: '0555'
+  content: |
+    #!/bin/bash
+    while true
+    do
+      if [[ -e $1 ]]
+      then
+        break;
+      else
+        echo "${1} does not exist. waiting..."
+        sleep 1
+      fi
     done
 - path: /opt/bin/install-flannel
   owner: root:root
