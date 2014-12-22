@@ -1,17 +1,24 @@
 # How to Contribute
 
-This Joukou project is proprietary licensed and accepts contributions via Github
-pull requests from Joukou Ltd employees and contractors only. This document
-outlines some of the conventions on commit message formatting, contact points
-for developers and other resources to make getting your contribution accepted.
+This Joukou project is Apache 2.0 licensed and accepts contributions via Github pull
+requests. This document outlines some of the conventions on commit message formatting,
+contact points for developers and other resources to make getting your contribution
+accepted.
+
+# Certificate of Origin
+
+By contributing to this project you agree to the
+[Developer Certificate of Origin (DCO)][dco]. This document was created by the Linux
+Kernel community and is a simple statement that you, as a contributor, have the legal
+right to make the contribution.
 
 # Support Channels
 
-- Flowdock: [Technology](https://www.flowdock.com/app/joukou/technology) flow.
+- IRC: #[joukou](irc://irc.freenode.org:6667/#joukou) IRC channel on freenode.org
 
 ## Getting Started
 
-- Clone the repository from GitHub
+- Fork the repository on GitHub
 - Read the README.md for build instructions
 
 ## Contribution Flow
@@ -70,3 +77,5 @@ The allowed {types} are as follows:
     ref -> refactoring code
     test -> adding missing tests
     chore -> maintenance
+
+[dco]: DCO
